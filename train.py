@@ -11,10 +11,10 @@ from utils import set_seed, initialize_weights, adjust_learning_rate, save_model
 
 # Configuration parameters, better to move them to a config.py file
 config = {
-    "batch_size": 16,
-    "epochs": 50,
+    "batch_size": 32,
+    "epochs": 10,
     "learning_rate": 0.001,
-    "seed": 42
+    "seed": 100
 }
 
 def main():
@@ -31,7 +31,7 @@ def main():
     # Set up MLflow
     mlflow.set_experiment(config["experiment_name"])
     with mlflow.start_run():
-        ## Log parameter to MLflow ##
+        ## Log hyper-parameter to MLflow ##
         mlflow.log_params(config) 
 
         for epoch in range(config["epochs"]):
@@ -51,15 +51,14 @@ def main():
                     print(f'Epoch {epoch + 1}, Batch {i + 1}, Loss: {running_loss / 200:.4f}')
                     running_loss = 0.0'''
 
-            # Log loss after every epoch
+            # Calculate loss after every epoch
             avg_loss = running_loss/ len(train_loader)
             ## Log eval metrics to MLflow ##
             mlflow.log_metric("loss", avg_loss, step=epoch)
 
-
-
             adjust_learning_rate(optimizer, epoch, init_lr=config["learning_rate"])
 
+            # Evaluation
             model.eval()
             correct = 0
             total = 0
@@ -72,9 +71,13 @@ def main():
                     correct += (predicted == labels).sum().item()
 
             accuracy = 100 * correct / total
-            print(f'Accuracy of the network on the 10000 test images: {accuracy:.2f}%')
+            mlflow.log_metric("accuracy", accuracy, step=epoch)
+            print(f'Epoch {epoch+1}: Loss: {avg_loss:.2f}, Accuracy: {accuracy:.2f}%')
 
-        save_model(model)
+        #save_model(model)
+        ## Log the model to MLflow ##
+        mlflow.pytorch.log_model(model, "model")
+
 
 if __name__ == "__main__":
     main()
